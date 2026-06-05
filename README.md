@@ -127,25 +127,28 @@ http://localhost:5000
    - **Category Breakdown**: Detailed probabilities for each toxicity type
    - **Important Words**: Words contributing to toxicity (if applicable)
 
-## Example Use Cases
+## Screenshots
+
+### Application Interface
+![Application Main Interface](screenshots/main_interface.png)
+*The main web interface showing input field and analyze button*
 
 ### Example 1: Positive Sentiment (Non-Toxic)
-```
-Input: "This is a wonderful and helpful application!"
-Result: NON-TOXIC (Positive sentiment detected, BERT skipped)
-```
+![Positive Sentiment Analysis](screenshots/positive_example.png)
+*Input: "This is a wonderful and helpful application!" - Shows NON-TOXIC result with positive sentiment*
 
-### Example 2: Genuine Toxicity
-```
-Input: "You are an idiot and everyone hates you"
-Result: TOXIC (Negative sentiment + high toxicity probability)
-```
+### Example 2: Genuine Toxicity Detection
+![Toxic Content Detection](screenshots/toxic_example.png)
+*Input: "You are an idiot and everyone hates you" - Shows TOXIC result with category breakdown and word importance*
 
-### Example 3: Potential Sarcasm
-```
-Input: "Oh great, another amazing feature that doesn't work"
-Result: SARCASTIC (Negative/Neutral sentiment but low toxicity)
-```
+### Example 3: Sarcasm Detection
+![Sarcasm Detection Example](screenshots/sarcasm_example.png)
+*Input: "Oh, I didn't realize you were an expert on my life. Please, tell me what I should do next" - Shows SARCASTIC classification*
+
+### Word-Level Importance Visualization
+![Word Importance](screenshots/word_importance.png)
+*Highlights which words contributed most to the toxicity decision*
+
 
 ## Configuration and Customization
 
@@ -175,19 +178,6 @@ if polarity > 0.1:  # Change to 0.05 for more positive-sensitive
     return 'POSITIVE', abs(polarity)
 elif polarity < -0.1:  # Change to -0.05 for more negative-sensitive
     return 'NEGATIVE', abs(polarity)
-```
-
-### Adding Custom Toxicity Categories
-
-Update the `CLASS_NAMES` list and `CATEGORY_DEFINITIONS` dictionary:
-
-```python
-CLASS_NAMES = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate', 'your_category']
-
-CATEGORY_DEFINITIONS['your_category'] = {
-    'short': 'Short description',
-    'full': 'Detailed description of this category'
-}
 ```
 
 ## Performance Optimization
@@ -244,3 +234,4 @@ Potential improvements:
 - **Unitary** - Fine-tuned toxic-bert model
 - **TextBlob** - Sentiment analysis library
 - **Jigsaw/Google** - Toxic comment classification dataset
+- **Google NotebookLM** - For creating presentation slides and documentation support
