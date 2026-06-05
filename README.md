@@ -64,29 +64,11 @@ Before running this application, ensure you have the following installed:
 ### 1. Clone or Download the Repository
 
 ```bash
-git clone <your-repository-url>
-cd <project-directory>
+git clone https://github.com/Coding-Powers/efficient-toxicity-detection-sentiment-first
+cd efficient-toxicity-detection-sentiment-first/
 ```
 
-Or download the project files to your local machine.
-
-### 2. Create a Virtual Environment (Recommended)
-
-Create and activate a virtual environment to avoid dependency conflicts:
-
-**On Linux/macOS:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-**On Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-### 3. Install Required Dependencies
+### 2. Install Required Dependencies
 
 Install the required Python packages using pip:
 
@@ -100,27 +82,6 @@ If `requirements.txt` is not available, install manually:
 pip install flask numpy torch transformers textblob
 python -m textblob.download_corpora
 ```
-
-**Note**: The last command downloads necessary corpora for TextBlob sentiment analysis.
-
-### 4. Verify File Structure
-
-Ensure your project directory has the following structure:
-
-```
-your-project/
-├── app_sentiment_bert_lime.py   # Main application file
-├── requirements.txt              # Python dependencies
-├── templates/                    # HTML templates directory
-│   └── index.html               # Main web interface
-├── static/                       # Static files (CSS, JS, images)
-│   └── (your static files)
-└── README.md                     # This file
-```
-
-**Important**: 
-- The `templates` folder must contain `index.html`
-- The `static` folder should be present (can be empty initially)
 
 ## Running the Application
 
@@ -145,7 +106,6 @@ STARTING FLASK SERVER
  * Debug mode: on
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:5000
- * Running on http://192.168.1.100:5000
 ```
 
 ### 2. Access the Web Application
@@ -154,12 +114,6 @@ Open your web browser and navigate to:
 
 ```
 http://localhost:5000
-```
-
-Or if accessing from another device on the same network:
-
-```
-http://<your-ip-address>:5000
 ```
 
 ### 3. Using the Application
@@ -191,56 +145,6 @@ Result: TOXIC (Negative sentiment + high toxicity probability)
 ```
 Input: "Oh great, another amazing feature that doesn't work"
 Result: SARCASTIC (Negative/Neutral sentiment but low toxicity)
-```
-
-## API Endpoints
-
-### GET `/`
-Returns the main web interface (index.html)
-
-### POST `/analyze`
-Analyzes text for sentiment and toxicity
-
-**Request Body** (form-data):
-- `text`: The text string to analyze (minimum 3 characters)
-
-**Response Format**:
-```json
-{
-  "success": true,
-  "text": "analyzed text",
-  "sentiment": {
-    "label": "NEGATIVE",
-    "confidence": 0.75
-  },
-  "case": 3,
-  "decision": "TOXIC",
-  "decision_message": "⚠️ TOXIC - Negative sentiment and toxicity probability 85% (> 60%)",
-  "toxic_probability": 0.85,
-  "primary_prediction": {
-    "name": "toxic",
-    "probability": 0.85,
-    "percentage": 85.0,
-    "is_predicted": true
-  },
-  "all_predictions": [
-    {
-      "name": "toxic",
-      "probability": 0.85,
-      "percentage": 85.0,
-      "is_predicted": true
-    }
-  ],
-  "detected_categories": ["toxic", "insult"],
-  "important_words": [
-    {
-      "word": "idiot",
-      "importance": 0.92,
-      "label": "insult",
-      "category_definition": "Personal attacks, name-calling..."
-    }
-  ]
-}
 ```
 
 ## Configuration and Customization
@@ -286,52 +190,6 @@ CATEGORY_DEFINITIONS['your_category'] = {
 }
 ```
 
-## Troubleshooting
-
-### Common Issues and Solutions
-
-#### 1. **ModuleNotFoundError: No module named 'textblob'**
-**Solution**: Install TextBlob and download corpora
-```bash
-pip install textblob
-python -m textblob.download_corpora
-```
-
-#### 2. **Model download fails or is slow**
-**Solution**: 
-- Check your internet connection
-- Use a mirror for Hugging Face:
-```python
-import os
-os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
-```
-
-#### 3. **Out of Memory Error**
-**Solution**: The model requires significant RAM. Try:
-- Close other applications
-- Force CPU-only mode (already configured)
-- Reduce batch size if modified
-- Use a smaller model variant
-
-#### 4. **Port 5000 already in use**
-**Solution**: Change the port number in the last line:
-```python
-app.run(debug=True, host='0.0.0.0', port=5001)  # Use different port
-```
-
-#### 5. **TextBlob corpora download fails**
-**Solution**: Manual download or use alternative:
-```python
-# Alternative: Use pattern library or manually download corpora
-# Or handle gracefully with fallback sentiment analysis
-```
-
-#### 6. **Slow first request**
-**Solution**: This is normal. The model loads into memory on first request. Subsequent requests will be faster.
-
-#### 7. **Template not found error**
-**Solution**: Ensure you have `templates/index.html` in your project directory.
-
 ## Performance Optimization
 
 ### Current Optimizations
@@ -351,39 +209,6 @@ app.run(debug=True, host='0.0.0.0', port=5001)  # Use different port
 - **Analysis time (Case 1)**: < 100ms (sentiment only)
 - **Analysis time (Cases 2-3)**: 500ms - 2 seconds (BERT + sentiment)
 - **Memory usage**: 2-3 GB
-
-## Production Deployment Notes
-
-For production environments, consider these changes:
-
-1. **Disable Debug Mode**:
-```python
-app.run(debug=False, host='0.0.0.0', port=5000)
-```
-
-2. **Use Production WSGI Server**:
-```bash
-pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app_sentiment_bert_lime:app
-```
-
-3. **Add Rate Limiting**:
-```python
-from flask_limiter import Limiter
-limiter = Limiter(app, key_func=lambda: request.remote_addr)
-```
-
-4. **Implement Caching**:
-```python
-from flask_caching import Cache
-cache = Cache(app, config={'CACHE_TYPE': 'simple'})
-```
-
-5. **Add Logging**:
-```python
-import logging
-logging.basicConfig(level=logging.INFO)
-```
 
 ## Security Considerations
 
@@ -413,32 +238,9 @@ Potential improvements:
 - Historical analysis tracking
 - Real-time streaming analysis
 
-## License
-
-[Specify your license here]
-
 ## Acknowledgments
 
 - **Hugging Face** - Transformers library and model hosting
 - **Unitary** - Fine-tuned toxic-bert model
 - **TextBlob** - Sentiment analysis library
 - **Jigsaw/Google** - Toxic comment classification dataset
-
-## Support and Contributing
-
-For issues, questions, or contributions:
-1. Check the troubleshooting section
-2. Verify all dependencies are correctly installed
-3. Ensure Python version compatibility (3.7+)
-4. Open an issue in the repository
-5. Provide error logs and system information
-
----
-
-**Important Disclaimer**: This tool is designed for content moderation assistance and educational purposes. It should not be the sole determinant for content decisions. Always incorporate human review for critical applications, as no automated system is 100% accurate.
-
-**Version**: 2.0 (with sentiment analysis)
-**Last Updated**: June 2026
-```
-
-This README now accurately reflects your enhanced code with sentiment analysis integration, the three-case decision system, and all the specific features of your application.
