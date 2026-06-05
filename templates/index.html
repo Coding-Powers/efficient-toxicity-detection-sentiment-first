@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toxic Language Detector | Explainable AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Toxic Language Detector</h1>
+            <div class="subtitle">Explainable AI for Content Moderation</div>
+        </header>
+
+        <div class="main-card">
+            <div class="input-section">
+                <textarea id="commentInput" placeholder="Enter a comment to analyze...&#10;&#10;Example: i will kill you" rows="5"></textarea>
+                <button id="analyzeBtn" onclick="analyzeText()">🔍 Analyze Comment</button>
+            </div>
+
+            <div id="results" style="display: none;">
+                <div class="divider"></div>
+                
+                <div class="prediction-section">
+                    <h2>Prediction Result</h2>
+                    <div id="primaryPrediction" class="primary-prediction"></div>
+                    <div id="decisionMessage" class="decision-message"></div>
+                </div>
+
+                <div id="scoresSectionContainer" class="scores-section">
+                    <h3>All Toxicity Scores</h3>
+                    <div id="scoresContainer" class="scores-container"></div>
+                </div>
+
+                <div id="explanationSectionContainer" class="explanation-section">
+                    <h3>Why was this flagged?</h3>
+                    <p class="explanation-sub">Model attention shows which words triggered the detection:</p>
+                    <div id="wordImportance" class="word-importance"></div>
+                </div>
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="loading" class="loading" style="display: none;">Analyzing 🔄</div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSectionsBasedOnDecision(decision) {
+            const scoresSection = document.getElementById('scoresSectionContainer');
+            const explanationSection = document.getElementById('explanationSectionContainer');
+            
+            if (decision === 'NON_TOXIC') {
+                if (scoresSection) scoresSection.classList.add('hidden-section');
+                if (explanationSection) explanationSection.classList.add('hidden-section');
+            } else {
+                if (scoresSection) scoresSection.classList.remove('hidden-section');
+                if (explanationSection) explanationSection.classList.remove('hidden-section');
+            }
+        }
+
+        async function analyzeText() {
+            const text = document.getElementById('commentInput').value;
+            
+            if (text.trim().length < 3) {
+                showError('Please enter at least 3 characters');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `text=${encodeURIComponent(text)}`
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayResults(data);
+                
+            } catch (error) {
+                showError('Error analyzing text: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function displayResults(data) {
+
+            const primaryDiv = document.getElementById('primaryPrediction');
+            const pred = data.primary_prediction;
+            
+
+            let badgeClass = '';
+            let displayText = '';
+            
+            if (data.decision === 'SARCASTIC') {
+                badgeClass = 'sarcastic';
+                displayText = '🤔 SARCASTIC DETECTED';
+            } else if (data.decision === 'TOXIC') {
+                badgeClass = 'toxic';
+                displayText = '⚠️ TOXIC DETECTED';
+            } else { 
+                badgeClass = 'non-toxic';
+                displayText = '✅ NON-TOXIC';
+            }
+            
+            primaryDiv.innerHTML = `
+                <div class="prediction-badge ${badgeClass}">
+                    ${displayText}
+                    ${data.decision !== 'SARCASTIC' && data.primary_prediction.percentage ? `<span class="confidence">(${data.primary_prediction.percentage}% confidence)</span>` : ''}
+                </div>
+            `;
+            
+            const messageDiv = document.getElementById('decisionMessage');
+            messageDiv.innerHTML = `<strong>Analysis:</strong> ${data.decision_message}`;
+            
+
+            toggleSectionsBasedOnDecision(data.decision);
+            
+            if (data.decision === 'NON_TOXIC') {
+
+                const scoresContainer = document.getElementById('scoresContainer');
+                const wordContainer = document.getElementById('wordImportance');
+                if (scoresContainer) scoresContainer.innerHTML = '';
+                if (wordContainer) wordContainer.innerHTML = '';
+
+            } 
+            
+
+            if (data.decision === 'TOXIC' || data.decision === 'SARCASTIC') {
+
+                const scoresContainer = document.getElementById('scoresContainer');
+                scoresContainer.innerHTML = '';
+                if (data.all_predictions && data.all_predictions.length) {
+                    data.all_predictions.forEach(pred => {
+                        const width = pred.probability * 100;
+                        scoresContainer.innerHTML += `
+                            <div class="score-item">
+                                <span class="score-label">${pred.name.replace(/_/g, ' ')}</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${width}%"></div>
+                                </div>
+                                <span class="score-value">${pred.percentage}%</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    scoresContainer.innerHTML = '<p>No score data available.</p>';
+                }
+                
+
+                const wordContainer = document.getElementById('wordImportance');
+                wordContainer.innerHTML = '';
+                
+                if (data.decision === 'SARCASTIC') {
+                    wordContainer.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <p style="color: #c44536; font-size: 16px;">🤔 This appears to be sarcastic content.</p>
+                            <p style="color: #5a3a2c; margin-top: 10px;">The combination of ${data.sentiment.label.toLowerCase()} sentiment and low toxicity probability (${(data.toxic_probability * 100).toFixed(1)}% below threshold) suggests sarcasm rather than genuine toxicity.</p>
+                            ${data.toxic_probability > 0 ? `<p style="color: #5a3a2c; margin-top: 10px;">Toxicity probability: ${(data.toxic_probability * 100).toFixed(1)}% (below 60% threshold)</p>` : ''}
+                        </div>
+                    `;
+                } else if (data.important_words && data.important_words.length === 0) {
+                    wordContainer.innerHTML = '<p class="no-words">No significant words detected.</p>';
+                } else if (data.important_words && data.important_words.length > 0) {
+                    data.important_words.forEach(word => {
+                        const width = word.importance * 100;
+                        let definitionHtml = '';
+                        
+                        if (word.label !== 'unknown') {
+                            definitionHtml = `
+                                <div class="word-definition">
+                                    <div class="definition-badge label-${word.label}">
+                                        ${word.label.toUpperCase()}
+                                    </div>
+                                    <div class="definition-text">
+                                        <strong>Why this word is flagged:</strong><br>
+                                        ${word.specific_definition || word.category_definition || 'This word contributes to toxicity detection.'}
+                                    </div>
+                                </div>
+                            `;
+                        } else if (word.importance > 0.7) {
+                            definitionHtml = `
+                                <div class="word-definition">
+                                    <div class="definition-badge label-toxic">
+                                        CONTEXTUAL
+                                    </div>
+                                    <div class="definition-text">
+                                        <strong>Why this word is flagged:</strong><br>
+                                        This word appears in a toxic context based on the model's attention patterns.
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        wordContainer.innerHTML += `
+                            <div class="word-item">
+                                <div class="word-header">
+                                    <span class="word-text">🔴 '${escapeHtml(word.word)}'</span>
+                                    <span class="importance-percentage">${(word.importance * 100).toFixed(1)}% attention</span>
+                                </div>
+                                <div class="importance-bar">
+                                    <div class="importance-fill" style="width: ${width}%"></div>
+                                </div>
+                                ${definitionHtml}
+                            </div>
+                        `;
+                    });
+                }
+            }
+            
+
+            if (data.decision === 'NON_TOXIC') {
+
+                const scoresContainer = document.getElementById('scoresContainer');
+                const wordContainer = document.getElementById('wordImportance');
+                if (scoresContainer) scoresContainer.innerHTML = '';
+                if (wordContainer) wordContainer.innerHTML = '';
+            }
+            
+
+            document.getElementById('results').style.display = 'block';
+            
+
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+                return c;
+            });
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+
+        document.getElementById('commentInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
+                e.preventDefault();
+                analyzeText();
+            }
+        });
+        
+        </script>
+</body>
+</html>
